@@ -31,7 +31,7 @@ export class UsersResolver {
     }
   }
 
-  @Mutation((returns) => LoginOutput)
+  @Mutation(() => LoginOutput)
   async login(@Args('input') loginInput: LoginInput): Promise<LoginOutput> {
     try {
       return this.usersService.login(loginInput);

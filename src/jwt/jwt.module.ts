@@ -7,6 +7,7 @@ import { CONFIG_OPTIONS } from 'src/common/common.constants';
 @Global()
 export class JwtModule {
   static forRoot(options: JwtModuleOptions): DynamicModule {
+    console.log('JWT_OPTIONS',options)
     return {
       module: JwtModule,
       providers: [

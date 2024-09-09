@@ -5,9 +5,10 @@ import { Repository } from 'typeorm';
 import { CreateAccountInput } from './dtos/create-account.dto';
 import { LoginInput } from './dtos/login.dto';
 import { JwtService } from 'src/jwt/jwt.service';
-import { EditProfileInput } from './dtos/edit-profile.dto';
+import { EditProfileInput, EditProfileOutput } from './dtos/edit-profile.dto';
 import { Verification } from './entities/verification.entity';
 import { VerifyEmailOutput } from './dtos/verify-email.dto';
+import { MailService } from 'src/mail/email.service';
 
 @Injectable()
 export class UsersService {
@@ -15,7 +16,8 @@ export class UsersService {
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Verification)
     private readonly verification: Repository<Verification>,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly mailService: MailService
   ) {}
 
   async createAccount({
@@ -31,11 +33,12 @@ export class UsersService {
       const user = await this.users.save(
         this.users.create({ email, password, role })
       );
-      await this.verification.save(
+      const verification = await this.verification.save(
         this.verification.create({
           user,
         })
       );
+      this.mailService.sendVerificationEmail(user.email, verification.code);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: 'Couldt create account.' };
@@ -81,15 +84,27 @@ export class UsersService {
     return this.users.findOne({ where: { id } });
   }
 
-  async editProfile(userId: number, { email, password }: EditProfileInput) {
+  async editProfile(userId: number, { email, password }: EditProfileInput):Promise<EditProfileOutput> {
+    try {
     const user = await this.users.findOne({ where: { id: userId } });
-    if (user) {
+    if (email) {
       user.email = email;
       user.verified = false;
-      await this.verification.save(this.verification.create({ user }));
+      const verification = await this.verification.save(this.verification.create({ user }));
+      this.mailService.sendVerificationEmail(user.email, verification.code)
+        console.log('email nuevo', user.email)
     }
     if (password) user.password = password;
-    return this.users.save(user);
+    await this.users.save(user);
+    return {
+      ok:true,
+      }
+    } catch(error){
+        return {
+          ok:false,
+          error
+        }
+    }
   }
 
   async verifyEmail(code: string): Promise<VerifyEmailOutput> {
